@@ -1,38 +1,48 @@
 import 'package:flutter/material.dart';
 
+import '../services/soil_logic.dart';
+
 class ResultScreen extends StatelessWidget {
-  const ResultScreen({super.key});
+  // Pass the OCR text here later: ResultScreen(scannedText: ocrText).
+  // If null, the sample text below is used so the screen still works.
+  const ResultScreen({super.key, this.scannedText});
+
+  final String? scannedText;
 
   static const Color primaryGreen = Color(0xFF2E7D4F);
   static const Color darkGreen = Color(0xFF1F5E3A);
   static const Color bgGreen = Color(0xFFF2F9F4);
 
-  // Dummy data for now — Thanusha will replace this with real OCR + logic output
-  static const List<Map<String, String>> soilData = [
-    {'param': 'Nitrogen (N)', 'value': '218 kg/ha', 'status': 'Low'},
-    {'param': 'Phosphorus (P)', 'value': '24 kg/ha', 'status': 'Good'},
-    {'param': 'Potassium (K)', 'value': '180 kg/ha', 'status': 'Medium'},
-    {'param': 'pH', 'value': '6.8', 'status': 'Good'},
-    {'param': 'Organic Carbon', 'value': '0.52 %', 'status': 'Medium'},
-  ];
+  // Sample card text, used until real OCR text is passed in.
+  static const String _sampleText = '''
+Available Nitrogen (N): 218 kg/ha
+Available Phosphorus (P): 24 kg/ha
+Available Potassium (K): 180 kg/ha
+pH 6.8
+Organic Carbon (OC) 0.52 %
+''';
 
-  static const List<Map<String, String>> recommendations = [
-    {'label': 'Nitrogen (N)', 'detail': 'Urea (46% N) — 50 kg/acre'},
-    {'label': 'Phosphorus (P)', 'detail': 'DAP (18-46-0) — 25 kg/acre'},
-    {'label': 'Potassium (K)', 'detail': 'MOP (60% K) — 25 kg/acre'},
-  ];
+  String _statusFor(Level l) {
+    switch (l) {
+      case Level.low:
+        return 'Low';
+      case Level.medium:
+        return 'Medium';
+      case Level.high:
+        return 'Good';
+    }
+  }
 
-  static const List<String> otherSuggestions = [
-    'Add organic manure (FYM/compost)',
-    'Maintain soil pH between 6.5 - 7.5',
-    'Follow balanced fertilization for better yield',
-  ];
+  String _num(double v) =>
+      v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toString();
 
   Color _statusColor(String status) {
     switch (status) {
       case 'Low':
         return Colors.red;
       case 'Medium':
+      case 'Acidic':
+      case 'Alkaline':
         return Colors.orange;
       case 'Good':
       default:
@@ -42,6 +52,47 @@ class ResultScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final values = SoilLogic.parse(scannedText ?? _sampleText);
+
+    final List<Map<String, String>> soilData = [
+      if (values.n != null)
+        {
+          'param': 'Nitrogen (N)',
+          'value': '${_num(values.n!)} kg/ha',
+          'status': _statusFor(SoilLogic.nitrogenLevel(values.n!)),
+        },
+      if (values.p != null)
+        {
+          'param': 'Phosphorus (P)',
+          'value': '${_num(values.p!)} kg/ha',
+          'status': _statusFor(SoilLogic.phosphorusLevel(values.p!)),
+        },
+      if (values.k != null)
+        {
+          'param': 'Potassium (K)',
+          'value': '${_num(values.k!)} kg/ha',
+          'status': _statusFor(SoilLogic.potassiumLevel(values.k!)),
+        },
+      if (values.ph != null)
+        {
+          'param': 'pH',
+          'value': _num(values.ph!),
+          'status': SoilLogic.phLabel(values.ph!),
+        },
+      if (values.oc != null)
+        {
+          'param': 'Organic Carbon',
+          'value': '${_num(values.oc!)} %',
+          'status': _statusFor(SoilLogic.organicCarbonLevel(values.oc!)),
+        },
+    ];
+
+    final List<Map<String, String>> recommendations = SoilLogic.recommend(
+      values,
+    ).map((r) => {'label': r.nutrient, 'detail': r.advice}).toList();
+
+    final List<String> otherSuggestions = SoilLogic.tips(values);
+
     return Scaffold(
       backgroundColor: bgGreen,
       body: SafeArea(
