@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../services/ocr_service.dart';
+import '../services/soil_logic.dart';
 import 'result_screen.dart';
 
 class ScanScreen extends StatefulWidget {
@@ -13,7 +15,53 @@ class _ScanScreenState extends State<ScanScreen> {
   static const Color primaryGreen = Color(0xFF2E7D4F);
   static const Color bgGreen = Color(0xFFF2F9F4);
 
+  final OcrService _ocr = OcrService();
   bool _captured = false;
+  bool _busy = false;
+  String? _scannedText; // null = use sample data (Chrome / no OCR)
+
+  @override
+  void dispose() {
+    _ocr.dispose();
+    super.dispose();
+  }
+
+  void _showMessage(String text) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  }
+
+  Future<void> _scan({required bool fromCamera}) async {
+    setState(() => _busy = true);
+    try {
+      final text = await _ocr.pickAndRead(fromCamera: fromCamera);
+      if (text == null) return; // user cancelled
+
+      if (SoilLogic.parse(text).isEmpty) {
+        _showMessage(
+          "Couldn't find soil values. Try a clearer, well-lit photo of the card.",
+        );
+        return;
+      }
+      if (!mounted) return;
+      setState(() {
+        _scannedText = text;
+        _captured = true;
+      });
+    } on UnsupportedError {
+      // Chrome / Windows: OCR is not available, so demo with sample data.
+      if (!mounted) return;
+      setState(() {
+        _scannedText = null;
+        _captured = true;
+      });
+      _showMessage('OCR works on a phone only. Using sample data.');
+    } catch (e) {
+      _showMessage('Could not read the card. Please try again.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -97,9 +145,13 @@ class _ScanScreenState extends State<ScanScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () => setState(() => _captured = true),
+                  onPressed: _busy ? null : () => _scan(fromCamera: true),
                   icon: const Icon(Icons.camera_alt_rounded),
-                  label: Text(_captured ? 'Retake Card' : 'Capture Card'),
+                  label: Text(
+                    _busy
+                        ? 'Reading card...'
+                        : (_captured ? 'Retake Card' : 'Capture Card'),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryGreen,
                     foregroundColor: Colors.white,
@@ -114,9 +166,7 @@ class _ScanScreenState extends State<ScanScreen> {
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed: () {
-                    // TODO: gallery picker
-                  },
+                  onPressed: _busy ? null : () => _scan(fromCamera: false),
                   icon: const Icon(Icons.image_outlined, color: primaryGreen),
                   label: const Text(
                     'Upload from Gallery',
@@ -140,7 +190,8 @@ class _ScanScreenState extends State<ScanScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const ResultScreen(),
+                              builder: (context) =>
+                                  ResultScreen(scannedText: _scannedText),
                             ),
                           );
                         }
