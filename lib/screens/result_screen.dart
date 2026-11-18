@@ -310,6 +310,17 @@ Organic Carbon (OC) 0.52 %
               ),
             ),
             const SizedBox(height: 20),
+            if (scannedText != null)
+              ExpansionTile(
+                title: const Text("scanned text (debug)"),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: SelectableText(scannedText!),
+                  ),
+                ],
+              ),
+            const SizedBox(height: 12),
 
             // Translate / Speak buttons
             if (scannedText != null)
