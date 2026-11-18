@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../services/soil_logic.dart';
+import '../services/voice_service.dart';
 
 class ResultScreen extends StatelessWidget {
-  // Pass the OCR text here later: ResultScreen(scannedText: ocrText).
+  // Pass the OCR text here: ResultScreen(scannedText: ocrText).
   // If null, the sample text below is used so the screen still works.
   const ResultScreen({super.key, this.scannedText});
 
@@ -21,6 +22,8 @@ Available Potassium (K): 180 kg/ha
 pH 6.8
 Organic Carbon (OC) 0.52 %
 ''';
+
+  static final VoiceService _voice = VoiceService();
 
   String _statusFor(Level l) {
     switch (l) {
@@ -310,19 +313,7 @@ Organic Carbon (OC) 0.52 %
               ),
             ),
             const SizedBox(height: 20),
-            if (scannedText != null)
-              ExpansionTile(
-                title: const Text("scanned text (debug)"),
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: SelectableText(scannedText!),
-                  ),
-                ],
-              ),
-            const SizedBox(height: 12),
 
-            // Translate / Speak buttons
             if (scannedText != null)
               ExpansionTile(
                 title: const Text('Scanned text (debug)'),
@@ -334,12 +325,14 @@ Organic Carbon (OC) 0.52 %
                 ],
               ),
             const SizedBox(height: 12),
+
+            // Translate / Speak buttons
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () {
-                      // TODO: Ashrin — hook Bhashini translation here
+                      // TODO: Translate (Hindi / Kannada) goes here
                     },
                     icon: const Icon(
                       Icons.translate_rounded,
@@ -362,7 +355,19 @@ Organic Carbon (OC) 0.52 %
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () {
-                      // TODO: Ashrin — hook Bhashini text-to-speech here
+                      final spoken = [
+                        'Your soil health summary.',
+                        ...soilData.map(
+                          (r) =>
+                              '${r['param']} is ${r['value']}, ${r['status']}.',
+                        ),
+                        'Recommendations.',
+                        ...recommendations.map(
+                          (r) => '${r['label']}: ${r['detail']}.',
+                        ),
+                        ...otherSuggestions,
+                      ].join(' ');
+                      _voice.speak(spoken);
                     },
                     icon: const Icon(Icons.volume_up_rounded),
                     label: const Text('Speak'),
