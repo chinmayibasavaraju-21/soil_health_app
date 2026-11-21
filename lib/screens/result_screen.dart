@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../services/soil_logic.dart';
 import '../services/voice_service.dart';
 import '../services/advice_text.dart';
+import '../services/report_service.dart';
+import 'reports_screen.dart';
 
 class ResultScreen extends StatelessWidget {
   // Pass the OCR text here: ResultScreen(scannedText: ocrText).
@@ -432,6 +434,37 @@ Organic Carbon (OC) 0.52 %
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.save_alt),
+                    label: const Text('Save report'),
+                    onPressed: () async {
+                      await ReportService.save(
+                        SoilLogic.parse(scannedText ?? _sampleText),
+                      );
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Report saved')),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.history),
+                    label: const Text('My Reports'),
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ReportsScreen()),
                     ),
                   ),
                 ),
