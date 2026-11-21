@@ -2,10 +2,66 @@ import 'package:flutter/material.dart';
 
 import '../services/soil_logic.dart';
 import '../services/voice_service.dart';
+import '../services/advice_text.dart';
 
 class ResultScreen extends StatelessWidget {
   // Pass the OCR text here: ResultScreen(scannedText: ocrText).
   // If null, the sample text below is used so the screen still works.
+  void _openLanguageSheet(BuildContext context) {
+    final values = SoilLogic.parse(scannedText ?? _sampleText);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) {
+        String lang = 'en';
+        return StatefulBuilder(
+          builder: (ctx, setSheet) {
+            final lines = AdviceText.build(values, lang);
+            final fullText = lines.join(' ');
+            return Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: 8,
+                    children: AdviceText.names.entries.map((e) {
+                      return ChoiceChip(
+                        label: Text(e.value),
+                        selected: lang == e.key,
+                        onSelected: (_) => setSheet(() => lang = e.key),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+                  ...lines.map(
+                    (l) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text('• $l', style: const TextStyle(fontSize: 16)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.volume_up),
+                      label: const Text('Read aloud'),
+                      onPressed: () => _voice.speak(
+                        fullText,
+                        lang: AdviceText.speechCodes[lang]!,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   const ResultScreen({super.key, this.scannedText});
 
   final String? scannedText;
@@ -331,9 +387,7 @@ Organic Carbon (OC) 0.52 %
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () {
-                      // TODO: Translate (Hindi / Kannada) goes here
-                    },
+                    onPressed: () => _openLanguageSheet(context),
                     icon: const Icon(
                       Icons.translate_rounded,
                       color: primaryGreen,
